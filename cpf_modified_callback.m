@@ -154,12 +154,18 @@ else
         nx.cb.default = nxx;    %% update next callback state
     else            %% FINAL call
         %% assemble results struct
+        if k == -inf
+            results.iterations = 0;
+        else
+            results.iterations = -k;
+        end
+        
         results.V_hat       = nxx.V_hat;
         results.lam_hat     = nxx.lam_hat;
         results.V           = nxx.V;
         results.lam         = nxx.lam;
         results.steps       = nxx.steps;
-        results.iterations  = -k;
+        %results.iterations  = -k;
         results.max_lam     = max(nxx.lam);
         results.Ybus        = cb_data.Ybus;
     end
