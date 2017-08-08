@@ -30,11 +30,16 @@ if CPFOptions.Plot.stabilityMargin % plot stability limits as function of pWind
     if CPFOptions.nWindPoints == 1 % plot all contingencies in same figure
         
         figure;
-        %Pdiff = pMax - pSecure;
-        bar(categorical(contingencies),[Psecure(:) Pdiff(:)],'stacked');
+        if CPFOptions.nContingencies == 1
+            tempCell = {'N/A',contingencies{1}};
+            bar(categorical(tempCell),[0 Psecure(:);0 Pdiff(:)]','stacked');
+        else
+            tempCell = contingencies;
+            bar(categorical(contingencies),[Psecure(:) Pdiff(:)],'stacked');
+        end
         ylabel('P (MW)');
-        set(gca,'xticklabel',contingencies);
-        try 
+        set(gca,'xticklabel',tempCell);
+        try % xticklabel sometimes gives error, not certain why 
             xticklabel_rotate([],30,[],'Fontsize',8)
         catch
         end
