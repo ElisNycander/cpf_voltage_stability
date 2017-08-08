@@ -18,8 +18,9 @@ CPFOptions.filename = 'pv_run';
 CPFOptions.windGenerators = [1]; % generators where to put wind farms 
 CPFOptions.windBusType = 'pq'; % type of wind production: pq or pv
 
-CPFOptions.powerFactor = 0.8;
-CPFOptions.pWind = 100:50:200; % wind capacity
+CPFOptions.powerFactor = 0.9787;
+CPFOptions.powerAngle = 'lead'; % lead/lag 
+CPFOptions.pWind = 900:50:900; % wind capacity
 
 %% runcpfs options - contingencies and target case
 CPFOptions.caseFile = 'case4gs';
@@ -28,7 +29,7 @@ CPFOptions.tripAllLines = 0; % trip all lines; overrides tripLines
 CPFOptions.tripLines = []; % list of lines to trip
 CPFOptions.tripGenerators = []; % list of generators to trip
 
-CPFOptions.loadIncreaseBuses = []; % if empty the load is increased at all buses
+CPFOptions.loadIncreaseBuses = [3]; % if empty the load is increased at all buses
 CPFOptions.productionIncreaseGenerators = []; % if empty all load is compensated at slack bus
 
 %% plotCPF OPTIONS
