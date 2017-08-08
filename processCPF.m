@@ -88,6 +88,7 @@ for k=1:nWindPoints % loop over wind power
             Sinj = [];
             Pgen = [];
             Qgen = [];
+            Pscale = [];
             secure_lam(i,k) = 0;
             pSecure(i,k) = 0;
             secure(i,k) = 0;
@@ -128,24 +129,6 @@ res.pWind = CPFOptions.pWind;
 res.pMaxNminus1 = min(pMax);
 res.pSecureNminus1 = min(pSecure);
 res.Nminus1 = min(secure);
-
-
-% if ~CPFOptions.Plot.disable
-%     % Stability limits bar Plot
-%     if CPFOptions.Plot.voltageStabilityBar
-%         figure;
-%         Pdiff = pMax - pSecure;
-%         bar(categorical(contingencies),[pSecure;Pdiff]','stacked');
-%         ylabel('P (MW)');
-%         set(gca,'xticklabel',contingencies);
-%         xticklabel_rotate([],30,[],'Fontsize',8)
-%         grid on;
-%         title('Voltage stability limits');
-%         % adjust y label
-%         ax = gca;
-%         ax.YLabel.Position = [-0.13 0.4 0];
-%     end
-% end
 
 
 

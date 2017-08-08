@@ -32,9 +32,13 @@ for k=1:CPFOptions.nWindPoints
     % corresponding PV bus.
     
     for iii=1:length(CPFOptions.windGenerators)
+        qfactor = sqrt(1-CPFOptions.powerFactor^2)/CPFOptions.powerFactor;
+        if strcmp(CPFOptions.powerAngle,'lead')
+            qfactor = -qfactor;
+        end
         mpcb.gen(iii,[PG QMAX QMIN]) = [CPFOptions.pWind(k) ... % change [PG QMAX]
-            CPFOptions.pWind(k)*sqrt(1-CPFOptions.powerFactor^2)/CPFOptions.powerFactor ...
-            -CPFOptions.pWind(k)*sqrt(1-CPFOptions.powerFactor^2)/CPFOptions.powerFactor ];
+                                        CPFOptions.pWind(k)*qfactor ...
+                                       -CPFOptions.pWind(k)*qfactor ];
     end
     
     
@@ -98,6 +102,7 @@ for k=1:CPFOptions.nWindPoints
         
         
         [mpc3,~] = runcpf(mpc1,mpc2,mpopt);
+        
         
         if strcmp(CPFOptions.windBusType,'pq')
             % remove negative load generation

@@ -16,19 +16,19 @@ CPFOptions.filename = 'pv_run';
 
 %% wind power options
 CPFOptions.windGenerators = [1]; % generators where to put wind farms 
-CPFOptions.windBusType = 'pv'; % type of wind production: pq or pv
+CPFOptions.windBusType = 'pq'; % type of wind production: pq or pv
 
 CPFOptions.powerFactor = 0.8;
-CPFOptions.pWind = 200:100:200; % wind capacity
+CPFOptions.pWind = 100:50:200; % wind capacity
 
 %% runcpfs options - contingencies and target case
 CPFOptions.caseFile = 'case4gs';
 
 CPFOptions.tripAllLines = 0; % trip all lines; overrides tripLines
-CPFOptions.tripLines = [1 2]; % list of lines to trip
+CPFOptions.tripLines = []; % list of lines to trip
 CPFOptions.tripGenerators = []; % list of generators to trip
 
-CPFOptions.loadIncreaseBuses = [3]; % if empty the load is increased at all buses
+CPFOptions.loadIncreaseBuses = []; % if empty the load is increased at all buses
 CPFOptions.productionIncreaseGenerators = []; % if empty all load is compensated at slack bus
 
 %% plotCPF OPTIONS
@@ -36,10 +36,10 @@ CPFOptions.Plot = struct();
 
 %% stability margin plots
 CPFOptions.Plot.stabilityMargin = 1; % plot stability margin curves
-CPFOptions.Plot.separateContingencies = 0; % separate Plot for each contingency
+CPFOptions.Plot.separateContingencies = 1; % separate Plot for each contingency
 
 %% plots for invidiual cases
-CPFOptions.Plot.individualCases = 1; % plot voltages and power curves for invidual scenarios
+CPFOptions.Plot.individualCases = 0; % plot voltages and power curves for invidual scenarios
 
 CPFOptions.Plot.pvCurve = 1; % Plot pvCurve curves
 CPFOptions.Plot.pqCurve = 1; % Plot pqCurve curves
