@@ -17,14 +17,14 @@ CPFOptions = struct();
 CPFOptions.windGenerators = [1]; % generators where to put wind farms 
 CPFOptions.windBusType = 'pv'; % type of wind production: pq or pv
 
-CPFOptions.powerFactor = 0.9;
-CPFOptions.pWind = 0:100:2000; % wind capacity
+CPFOptions.powerFactor = 0.8;
+CPFOptions.pWind = 200:100:200; % wind capacity
 
 %% runcpfs options - contingencies and target case
 CPFOptions.caseFile = 'case4gs';
 
-CPFOptions.tripAllLines = 1; % trip all lines; overrides tripLines
-CPFOptions.tripLines = []; % list of lines to trip
+CPFOptions.tripAllLines = 0; % trip all lines; overrides tripLines
+CPFOptions.tripLines = [1 2]; % list of lines to trip
 CPFOptions.tripGenerators = []; % list of generators to trip
 
 CPFOptions.loadIncreaseBuses = [3]; % if empty the load is increased at all buses
@@ -34,7 +34,7 @@ CPFOptions.productionIncreaseGenerators = []; % if empty all load is compensated
 %% plotcpfs options
 CPFOptions.Plot = struct();
 
-CPFOptions.Plot.disable = 1;
+CPFOptions.Plot.disable = 0;
 
 CPFOptions.Plot.pvCurve = 1; % Plot pvCurve curves
 CPFOptions.Plot.pqCurve = 1; % Plot pqCurve curves
@@ -70,7 +70,7 @@ CPFOptions = processCPFOptions(CPFOptions);
 % base case
 mpcb = CPFOptions.caseFunction();
 
-if strcmp(CPFOptions.windBusType,'pqCurve')
+if strcmp(CPFOptions.windBusType,'pq')
     % change wind farm buses to PQ
     for i=1:length(CPFOptions.windGenerators)
         gi = CPFOptions.windGenerators(i);
