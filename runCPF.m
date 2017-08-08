@@ -46,10 +46,19 @@ for k=1:CPFOptions.nWindPoints
     mpct = mpcb;
     
     % proportional load increase at specified buses
-    mpct.bus(CPFOptions.loadIncreaseBuses,[PD QD]) =  ...
-        mpct.bus(CPFOptions.loadIncreaseBuses,[PD QD]) * 2;
-    loadIncrease = sum(mpcb.bus(CPFOptions.loadIncreaseBuses,PD));
+    activeLoadIncreaseVector = mpcb.bus(CPFOptions.loadIncreaseBuses,PD);
+    reactiveLoadIncreaseVector = mpcb.bus(CPFOptions.loadIncreaseBuses,QD);
+    activeLoadIncrease = sum(activeLoadIncreaseVector);
     
+    if CPFOptions.loadIterations && CPFOptions.fromZeroLoad % begin first CPF from 0 load
+        mpcb.bus(CPFOptions.loadIncreaseBuses,[PD QD]) =  ...
+            mpcb.bus(CPFOptions.loadIncreaseBuses,[PD QD]) - ...
+            [activeLoadIncreaseVector reactiveLoadIncreaseVector];
+    else % begin CPF from base case load
+        mpct.bus(CPFOptions.loadIncreaseBuses,[PD QD]) =  ...
+            mpct.bus(CPFOptions.loadIncreaseBuses,[PD QD]) + ...
+            [activeLoadIncreaseVector reactiveLoadIncreaseVector];
+    end
     
     % QUESTION: CAN QLIM CHANGE GRADUALLY IN CPF?? - NO
     % increase generation
@@ -57,7 +66,7 @@ for k=1:CPFOptions.nWindPoints
         % add up generation of specified generators
         gi = CPFOptions.productionIncreaseGenerators;
         totalGeneration = sum(mpcb.gen(gi,PG));
-        scaleFactor = loadIncrease / totalGeneration;
+        scaleFactor = activeLoadIncrease / totalGeneration;
         % Note: For PV nodes, QMAX is constant in CPF (value from base case scenario?)
         % so only the active power set point is changed.
         mpct.gen(gi,[PG QMAX]) = mpct.gen(gi,[PG QMAX]) * scaleFactor;
@@ -100,9 +109,22 @@ for k=1:CPFOptions.nWindPoints
                 [mpcb.gen(idx,1) CPFOptions.pWind(k)]);
         end
         
-        
-        [mpc3,~] = runcpf(mpc1,mpc2,mpopt);
-        
+        iter = 0;
+        success = 0;
+        baseLoad = mpc1.bus(CPFOptions.loadIncreaseBuses,[PD QD]);
+        targetLoad = mpc2.bus(CPFOptions.loadIncreaseBuses,[PD QD]);
+        while ~success && iter < CPFOptions.maxLoadIterations 
+            % increase base case load
+            mpc1.bus(CPFOptions.loadIncreaseBuses,[PD QD]) = baseLoad + ...
+                [activeLoadIncreaseVector reactiveLoadIncreaseVector] * iter;
+            
+            mpc2.bus(CPFOptions.loadIncreaseBuses,[PD QD]) = targetLoad + ...
+                [activeLoadIncreaseVector reactiveLoadIncreaseVector] * iter;
+            
+            [mpc3,success] = runcpf(mpc1,mpc2,mpopt);
+            iter = iter + 1;
+        end
+        %mpc3.cpf.loadIncreaseIterations = iter; % needed to know original base load
         
         if strcmp(CPFOptions.windBusType,'pq')
             % remove negative load generation

@@ -28,3 +28,9 @@ CPFOptions.nWindPoints = length(CPFOptions.pWind);
 if isempty(CPFOptions.loadIncreaseBuses)
     CPFOptions.loadIncreaseBuses = 1:size(mpc.bus,1);
 end
+
+% load iterations diabled -> only run 1 CPF from base case load
+if ~CPFOptions.loadIterations
+    CPFOptions.maxLoadIterations = 1;
+    CPFOptions.fromZeroLoad = 0;
+end

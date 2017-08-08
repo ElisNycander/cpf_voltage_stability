@@ -17,6 +17,10 @@ powerFactor = cos(powerAngle);
 %% runcpfs options - contingencies and target case
 CPFOptions.caseFile = 'case4gs';
 
+CPFOptions.loadIterations = 1; % option to run CPF with different base load if it does not converge
+CPFOptions.fromZeroLoad = 0; % first CPF from zero load, otherwise begin at load given in case  
+CPFOptions.maxLoadIterations = 5; % maximum number of attempts to increase load
+
 CPFOptions.tripAllLines = 0; % trip all lines; overrides tripLines
 CPFOptions.tripLines = []; % list of lines to trip
 CPFOptions.tripGenerators = []; % list of generators to trip

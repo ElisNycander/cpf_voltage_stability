@@ -45,7 +45,11 @@ for k=1:nWindPoints % loop over wind power
             Pbase = sum(mpcb.bus(:,PD));
             Pdiff = sum(mpct.bus(:,PD) - mpcb.bus(:,PD));
             Pscale = Pbase + mpcc.cpf.lam * Pdiff;
-            pMax(i,k) = mpcc.cpf.max_lam * Pdiff;
+            if CPFOptions.loadIterations % base load may be different, add it to total loadability
+                pMax(i,k) = mpcc.cpf.max_lam * Pdiff + Pbase;
+            else % base load is always the same, use this as zero point
+                pMax(i,k) = mpcc.cpf.max_lam * Pdiff;
+            end
             max_lam(i,k) = mpcc.cpf.max_lam;
             
             % power injections must be calculated from voltages and bus matrix
