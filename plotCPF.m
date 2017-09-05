@@ -168,7 +168,7 @@ if CPFOptions.Plot.individualCases
                 if ~CPFOptions.Plot.subfigures
                     if CPFOptions.Plot.pvCurve
                         % PV Plot
-                        figure; pvh =  Plot(cpf.Pscale,abs(Vplot)); grid on;
+                        figure; pvh =  plot(cpf.Pscale,abs(Vplot)); grid on;
                         legend(vbus_legend);
                         xlabel('P (MW)');
                         ylabel('V (p.u.)');
@@ -176,7 +176,7 @@ if CPFOptions.Plot.individualCases
                     end
                     % PQ Plot
                     if CPFOptions.Plot.pqCurve
-                        figure; pqh = Plot(cpf.Pscale,Qplot); grid on;
+                        figure; pqh = plot(cpf.Pscale,Qplot); grid on;
                         legend(qbus_legend);
                         xlabel('P (MW)');
                         ylabel(pq_y_label);

@@ -15,12 +15,21 @@ CPFOptions = struct();
 CPFOptions.filename = 'pv_run';
 
 %% wind power options
-CPFOptions.windGenerators = [1]; % generators where to put wind farms 
+
+% windScheme
+% buses - Specify buses with WF and total amount and proportional allocation.
+% WFs may be PQ (negative load) or PV. 
+% generators - Specify generators where to increase WF. WFs may be PQ or PV. 
+CPFOptions.windScheme = 'buses';
+CPFOptions.removeOtherGeneration = 1; % 1 - remove other generation at WF buses
+CPFOptions.windGenerators = []; % generators where to put wind farms 
+CPFOptions.windBuses = [4]; % buses where to put WFs
+CPFOptions.windBusShare = []; % ratio of wind farm share
 CPFOptions.windBusType = 'pq'; % type of wind production: pq or pv
 
-CPFOptions.powerFactor = 0.9787;
-CPFOptions.powerAngle = 'lead'; % lead/lag 
-CPFOptions.pWind = 900:50:900; % wind capacity
+CPFOptions.powerFactor = 0.9;
+CPFOptions.powerAngle = 'lag'; % lead/lag 
+CPFOptions.pWind = 100; % wind capacity
 
 %% runcpfs options - contingencies and target case
 CPFOptions.caseFile = 'case4gs';

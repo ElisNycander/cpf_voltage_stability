@@ -7,14 +7,43 @@ define_constants;
 % base case
 mpcb = CPFOptions.caseFunction();
 
-if strcmp(CPFOptions.windBusType,'pq') % change wind farm buses to PQ
-    for i=1:length(CPFOptions.windGenerators)
-        gi = CPFOptions.windGenerators(i);
-        bi = mpcb.gen(gi, GEN_BUS);
-        
-        mpcb.gen(gi, GEN_STATUS) = 0; % deactivate generator
-        mpcb.bus(bi, BUS_TYPE) = 1; % change to PQ node
-    end
+% add WF to gen matrix
+if strcmp(CPFOptions.windScheme,'buses')
+   % add wind generator for each bus
+   grow = size(mpcb.gen,1);
+   gcol = size(mpcb.gen,2);
+   nwf = length(CPFOptions.windBuses);
+   mpcb.gen = [mpcb.gen ; zeros(nwf,gcol)];
+   mpcb.gen(grow+1:grow+nwf,GEN_BUS) = CPFOptions.windBuses; % fill in generator bus
+   
+   for i=1:nwf
+       % set WF gen voltage to conform with other generators at the same bus
+       gi = find(mpcb.gen(1:grow,GEN_BUS)==CPFOptions.windBuses(i));
+       if ~isempty(gi)
+           gi = gi(1);
+           mpcb.gen(grow+i,VG) = mpcb.gen(gi,VG); % WF gen voltage = 1
+       else
+           mpcb.gen(grow+i,VG) = 1;
+       end
+   end
+   
+   % for WF pv type, set all WF buses to pv and activate WF generators
+   if strcmp(CPFOptions.windBusType,'pv')
+       mpcb.bus(CPFOptions.windBuses,BUS_TYPE) = 2;
+       mpcb.gen(grow+1,grow+nwf,GEN_STATUS) = 1;
+   end
+   
+   if CPFOptions.removeOtherGeneration
+       for i=1:length(CPFOptions.windBuses)
+            % deactive other generators at WF buses
+            mpcb.gen( mpcb.gen(:,GEN_BUS) == CPFOptions.windBuses(i) , GEN_STATUS) = 0;
+       end  
+       if strcmp(CPFOptions.windBusType,'pq')
+            % buses that were PV and had generators deactivated should now
+            % be PQ
+            mpcb.bus( CPFOptions.windBuses,BUS_TYPE) = 1;
+       end
+   end
 end
 
 % save base case for later
@@ -26,21 +55,30 @@ for k=1:CPFOptions.nWindPoints
     
     mpcb = mpcbSaved;
     
-    %% add wind power generation
+    %% add wind power [P Q] to gen matrix
     % If wind farms are PQ buses [PG QMAX] is only used as storage for
     % negative load. If wind farms are PV buses [PG QMAX] are used for
     % corresponding PV bus.
     
-    for iii=1:length(CPFOptions.windGenerators)
-        qfactor = sqrt(1-CPFOptions.powerFactor^2)/CPFOptions.powerFactor;
-        if strcmp(CPFOptions.powerAngle,'lead')
-            qfactor = -qfactor;
+    if strcmp(CPFOptions.windScheme,'buses')
+        
+        if length(CPFOptions.windBusShare) ~= length(nwf)
+            windWeights = 1/length(nwf) * ones(1,nwf); % proportional share at all buses
+        else
+            windWeights = CPFOptions.windBusShare / sum(CPFOptions.windBusShare);
         end
-        mpcb.gen(iii,[PG QMAX QMIN]) = [CPFOptions.pWind(k) ... % change [PG QMAX]
-                                        CPFOptions.pWind(k)*qfactor ...
-                                       -CPFOptions.pWind(k)*qfactor ];
+        
+        for iii=1:nwf
+            
+            qfactor = sqrt(1-CPFOptions.powerFactor^2)/CPFOptions.powerFactor;
+            if strcmp(CPFOptions.powerAngle,'lead')
+                qfactor = -qfactor;
+            end
+            mpcb.gen(iii+grow,[PG QMAX QMIN]) = [CPFOptions.pWind(k) ... % set [PG QMAX QMIN]
+                CPFOptions.pWind(k)*qfactor ...
+                -CPFOptions.pWind(k)*qfactor ] * windWeights(iii);
+        end
     end
-    
     
     %% form target load case
     mpct = mpcb;
@@ -72,17 +110,19 @@ for k=1:CPFOptions.nWindPoints
         mpct.gen(gi,[PG QMAX]) = mpct.gen(gi,[PG QMAX]) * scaleFactor;
     end
     
+    
     if strcmp(CPFOptions.windBusType,'pq') % add negative load generation
-        for i=1:length(CPFOptions.windGenerators)
+        for i=1:nwf
             % find bus of generator
-            gi = CPFOptions.windGenerators(i);
-            bi = mpcb.gen(1,gi);
-            
+            bi = CPFOptions.windBuses(i);
+            gi = grow + i;
+            % same constant power factor load in base and target case
             mpcb.bus(bi,[PD QD]) = mpcb.bus(bi,[PD QD]) - mpcb.gen(gi,[PG QMAX]);
-            mpct.bus(bi,[PD QD]) = mpct.bus(bi,[PD QD]) - mpct.gen(gi,[PG QMAX]);
+            mpct.bus(bi,[PD QD]) = mpct.bus(bi,[PD QD]) - mpcb.gen(gi,[PG QMAX]);
             
         end
     end
+    
     
     
     for i=1:CPFOptions.nContingencies
@@ -128,14 +168,14 @@ for k=1:CPFOptions.nWindPoints
         
         if strcmp(CPFOptions.windBusType,'pq')
             % remove negative load generation
-            for ii=1:length(CPFOptions.windGenerators)
+            for ii=1:nwf
                 % find bus of generator
-                gi = CPFOptions.windGenerators(ii);
-                bi = mpcb.gen(1,gi);
+                bi = CPFOptions.windBuses(i);
+                gi = grow + i;
                 
-                mpc1.bus(bi,[PD QD]) = mpc1.bus(bi,[PD QD]) + mpcb.gen(gi,[PG QG]);
-                mpc2.bus(bi,[PD QD]) = mpc2.bus(bi,[PD QD]) + mpcb.gen(gi,[PG QG]);
-                mpc3.bus(bi,[PD QD]) = mpc3.bus(bi,[PD QD]) + mpcb.gen(gi,[PG QG]);
+                mpc1.bus(bi,[PD QD]) = mpc1.bus(bi,[PD QD]) + mpcb.gen(gi,[PG QMAX]);
+                mpc2.bus(bi,[PD QD]) = mpc2.bus(bi,[PD QD]) + mpcb.gen(gi,[PG QMAX]);
+                mpc3.bus(bi,[PD QD]) = mpc3.bus(bi,[PD QD]) + mpcb.gen(gi,[PG QMAX]);
             end
         end
         

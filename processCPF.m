@@ -19,11 +19,11 @@ nWindPoints = size(contingencyCases,2);
 
 pMax = zeros(nContingencies,nWindPoints);
 pSecure = zeros(nContingencies,nWindPoints);
-max_lam = zeros(nContingencies,nWindPoints);
-secure_lam = zeros(nContingencies,nWindPoints);
+max_lam = zeros(nContingencies,nWindPoints); % maximum lamda when stability limit is reached (system unsolvable)
+secure_lam = zeros(nContingencies,nWindPoints); % maximum lambda for which system is secure
 contingencies = cell(nContingencies,1);
-secure = zeros(nContingencies,nWindPoints);
-
+secure = zeros(nContingencies,nWindPoints); % binary = 1 if base case power flow secure
+securityLimitType = zeros(nContingencies,nWindPoints); % type of security violation, 1 min, 2 max, 0 no violation, -1 no convergence
 
 for k=1:nWindPoints % loop over wind power
     for i=1:nContingencies % loop contingencies
@@ -69,14 +69,28 @@ for k=1:nWindPoints % loop over wind power
             % check if voltage limits are satisfied
             ii = 0;
             s = 1;
-            while s
+            while s && ii <= iter;
+                if size(V,2) < ii+1
+                    disp('hej')
+                end
                 Vtmp = abs(V(:,ii+1));
-                cond = sum(mpcb.bus(:,VMIN) <= Vtmp) + ...
-                    sum(mpcb.bus(:,VMAX) >= Vtmp);
-                if cond == 2*Nb
+                c1 = mpcb.bus(:,VMIN) >= Vtmp;
+                c2 = mpcb.bus(:,VMAX) <= Vtmp;
+                cond = sum(c1) + sum(c2);
+                if cond == 0
                     ii = ii + 1;
                 else
                     s = 0;
+                    % save violation information
+                    minLimitBuses = find(c1);
+                    maxLimitBuses = find(c2);
+                    if isempty(minLimitBuses) && ~isempty(maxLimitBuses)
+                        securityLimitType(i,k) = 2; % max limit reached
+                    elseif ~isempty(minLimitBuses) && isempty(maxLimitBuses)
+                        securityLimitType(i,k) = 1; % min limit reached
+                    else
+                        error('Both max and min voltage limits violated'); % both max and min limits violated
+                    end
                 end
             end
             if ii > 0
@@ -96,6 +110,7 @@ for k=1:nWindPoints % loop over wind power
             secure_lam(i,k) = 0;
             pSecure(i,k) = 0;
             secure(i,k) = 0;
+            securityLimitType(i,k) = -1;
         end
         
         
@@ -109,7 +124,9 @@ for k=1:nWindPoints % loop over wind power
         mpcc.cpf.Pgen = Pgen;
         mpcc.cpf.Qgen = Qgen;
         mpcc.cpf.Pscale = Pscale;
-        
+        mpcc.cpf.securityLimitType = securityLimitType(i,k);
+        mpcc.cpf.Pdiff = Pdiff;
+        mpcc.cpf.Pbase = Pbase;
         
         contingencyCases{i,k}.mpcc = mpcc; % return struct with additional results
     end % loop over contingencies
@@ -129,6 +146,7 @@ res.secure_lam = secure_lam;
 res.secure = secure;
 res.contingencies = contingencies;
 res.pWind = CPFOptions.pWind;
+res.securityLimitType = securityLimitType;
 
 res.pMaxNminus1 = min(pMax);
 res.pSecureNminus1 = min(pSecure);
