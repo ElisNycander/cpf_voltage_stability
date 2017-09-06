@@ -172,7 +172,7 @@ if CPFOptions.Plot.individualCases
                         legend(vbus_legend);
                         xlabel('P (MW)');
                         ylabel('V (p.u.)');
-                        title(sprintf(['PV Plot\n' CPFResults{k,l}.str]));
+                        title(sprintf(['Bus voltages\n' CPFResults{k,l}.str]));
                     end
                     % PQ Plot
                     if CPFOptions.Plot.pqCurve
@@ -180,14 +180,14 @@ if CPFOptions.Plot.individualCases
                         legend(qbus_legend);
                         xlabel('P (MW)');
                         ylabel(pq_y_label);
-                        title(sprintf(['PQ Plot\n' CPFResults{k,l}.str]));
+                        title(sprintf(['Reactive power\n' CPFResults{k,l}.str]));
                     end
                     if CPFOptions.Plot.ppCurve
                         figure; pph = plot(cpf.Pscale,Pplot); grid on;
                         legend(qbus_legend);
                         xlabel('P (MW)');
                         ylabel(pp_y_label);
-                        title(sprintf(['PP Plot\n' CPFResults{k,l}.str]));
+                        title(sprintf(['Active power\n' CPFResults{k,l}.str]));
                     end
                 else % if subfigures
                     figure;
