@@ -42,6 +42,22 @@ for k=1:nWindPoints % loop over wind power
             %% extract data
             V = mpcc.cpf.V;
             
+            if CPFOptions.checkCpfTermination
+            % increasing voltages => decrease max_lam
+            s = 1;
+            count = 1;
+            while s == 1 && count <= iter
+                vIncrease = abs(V(:,count)) < abs(V(:,count+1));
+                vDiff = vIncrease .* (abs(abs(V(:,count)) - abs(V(:,count+1))));
+                if max(vDiff) > CPFOptions.voltageTolerance
+                   s = 0;
+                else
+                   count = count + 1;
+                end                    
+            end
+            mpcc.cpf.max_lam = mpcc.cpf.lam(count);
+            end
+            
             Pbase = sum(mpcb.bus(:,PD));
             Pdiff = sum(mpct.bus(:,PD) - mpcb.bus(:,PD));
             Pscale = Pbase + mpcc.cpf.lam * Pdiff;
@@ -63,7 +79,14 @@ for k=1:nWindPoints % loop over wind power
                     + real(Sinj(:,ii));
                 Qgen(:,ii) = mpcb.bus(:,QD) + mpcc.cpf.lam(ii)*(mpct.bus(:,QD)-mpcb.bus(:,QD)) ...
                     + imag(Sinj(:,ii));
+                
+                % remove contribution from wind power negative load
+                if strcmp(CPFOptions.windBusType,'pq')
+                    % Note: Generated Q and P includes wind power
+                end
             end
+            
+            
             
             %% security constraints
             % check if voltage limits are satisfied
@@ -89,7 +112,8 @@ for k=1:nWindPoints % loop over wind power
                     elseif ~isempty(minLimitBuses) && isempty(maxLimitBuses)
                         securityLimitType(i,k) = 1; % min limit reached
                     else
-                        error('Both max and min voltage limits violated'); % both max and min limits violated
+                        securityLimitType(i,k) = 0;
+                        %error('Both max and min voltage limits violated'); % both max and min limits violated
                     end
                 end
             end

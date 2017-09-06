@@ -10,7 +10,7 @@ CPFOptions = struct();
 % WFs may be PQ (negative load) or PV. 
 % generators - Specify generators where to increase WF. WFs may be PQ or PV. 
 CPFOptions.windScheme = 'buses';
-CPFOptions.removeOtherGeneration = 1; % 1 - remove other generation at WF buses
+CPFOptions.removeOtherGeneration = 0; % 1 - remove other generation at WF buses
 CPFOptions.windGenerators = []; % generators where to put wind farms 
 CPFOptions.windBuses = [4]; % buses where to put WFs
 CPFOptions.windBusShare = []; % ratio of wind farm share
@@ -22,10 +22,17 @@ CPFOptions.pWind = 0:100:2000; % wind capacity
 
 powerAngle = linspace(-pi/4,pi/4,20);
 %powerAngle = linspace(-pi/8,pi/8,2);
+%powerAngle = pi/180*[30 35];
 powerFactor = cos(powerAngle);
 
 %% runcpfs options - contingencies and target case
 CPFOptions.caseFile = 'case4gs';
+
+% The maximum loadability will be calculated as the fist point where 
+% voltages start increasing, as the CPF solver may take a few false steps at 
+% the end with icreasing voltages, presumably due to numerical issues
+CPFOptions.checkCpfTermination = 1; 
+CPFOptions.voltageTolerance = 1e-3;
 
 CPFOptions.loadIterations = 1; % option to run CPF with different base load if it does not converge
 CPFOptions.fromZeroLoad = 0; % first CPF from zero load, otherwise begin at load given in case  
@@ -35,7 +42,7 @@ CPFOptions.tripAllLines = 0; % trip all lines; overrides tripLines
 CPFOptions.tripLines = []; % list of lines to trip
 CPFOptions.tripGenerators = []; % list of generators to trip
 
-CPFOptions.loadIncreaseBuses = []; % if empty the load is increased at all buses
+CPFOptions.loadIncreaseBuses = [3]; % if empty the load is increased at all buses
 CPFOptions.productionIncreaseGenerators = []; % if empty all load is compensated at slack bus
 
 %% plotCPF OPTIONS
