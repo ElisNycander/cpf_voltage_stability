@@ -120,7 +120,8 @@ if CPFOptions.Plot.individualCases
                     for ii = 1:length(CPFOptions.Plot.voltageBuses)
                         plot_v_bus = [plot_v_bus find( mpcb.bus(:,1) == CPFOptions.Plot.voltageBuses(ii))];
                     end
-                else
+                end
+                if isempty(plot_v_bus)
                     plot_v_bus = 1:size(mpcb.bus,1);
                 end
                 Vplot = cpf.V(plot_v_bus,:);
