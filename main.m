@@ -7,7 +7,7 @@
 %%
 
 clear;
-close all;
+%close all;
 define_constants;
 CPFOptions = struct();
 
@@ -21,20 +21,23 @@ CPFOptions.filename = 'pv_run';
 % WFs may be PQ (negative load) or PV. 
 % generators - Specify generators where to increase WF. WFs may be PQ or PV. 
 CPFOptions.windScheme = 'buses';
-CPFOptions.removeOtherGeneration = 0; % 1 - remove other generation at WF buses
+CPFOptions.removeOtherGeneration = 1; % 1 - remove other generation at WF buses
 CPFOptions.windGenerators = []; % generators where to put wind farms 
 CPFOptions.windBuses = [4]; % buses where to put WFs
 CPFOptions.windBusShare = []; % ratio of wind farm share
-CPFOptions.windBusType = 'pq'; % type of wind production: pq or pv
+CPFOptions.windBusType = 'pv'; % type of wind production: pq or pv
 
-powerAngle = 35.53; % 30 35.53 % 40.26 45
-CPFOptions.powerFactor = cos(powerAngle/180*pi);
-%CPFOptions.powerFactor = 0.9;
+
+%powerAngle = 45; % 30 35.53 % 40.26 45
+%CPFOptions.powerFactor = cos(powerAngle/180*pi);
+CPFOptions.powerFactor = 0.8;
 CPFOptions.powerAngle = 'lag'; % lead/lag 
-CPFOptions.pWind = 1900; % wind capacity
+CPFOptions.pWind = 300; % wind capacity
 
 %% runcpfs options - contingencies and target case
 CPFOptions.caseFile = 'case4gs';
+
+CPFOptions.mergeGeneration = 1; % use only one generator per bus in cpf
 
 % The maximum loadability will be calculated as the fist point where 
 % voltages start increasing, as the CPF solver may take a few false steps at 
@@ -50,7 +53,7 @@ CPFOptions.tripAllLines = 0; % trip all lines; overrides tripLines
 CPFOptions.tripLines = []; % list of lines to trip
 CPFOptions.tripGenerators = []; % list of generators to trip
 
-CPFOptions.loadIncreaseBuses = [3]; % if empty the load is increased at all buses
+CPFOptions.loadIncreaseBuses = []; % if empty the load is increased at all buses
 CPFOptions.productionIncreaseGenerators = []; % if empty all load is compensated at slack bus
 
 %% plotCPF OPTIONS
@@ -79,17 +82,24 @@ CPFOptions.Plot.colormap = 'lines';
 
 %% options for cpf
 mpopt = mpoption();
-mpopt.verbose = 1;
+mpopt.verbose = 2;
 mpopt.cpf.enforce_q_lims = 1;
-mpopt.out.all = 0;
+%mpopt.out.all = 0;
 mpopt.cpf.user_callback = 'cpf_modified_callback';
 mpopt.cpf.parameterization = 3;
 mpopt.adapt_step = 0;
 mpopt.step = 0.1;
 
 
+mpopt.pf.enforce_q_lims = 1;
+
 %% do some calculations
 CPFOptions = processCPFOptions(CPFOptions);
+
+%% change power limits
+
+CPFOptions.mpc.gen(2,[QMAX QMIN]) = [1e9 -1e9];
+CPFOptions.mpc.gen(1,[QMIN]) = [-1e9];
 
 %% run cpfs
 

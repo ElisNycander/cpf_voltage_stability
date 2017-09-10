@@ -8,6 +8,7 @@ define_constants;
 % function handle to case file
 CPFOptions.caseFunction = str2func(CPFOptions.caseFile);
 mpc = CPFOptions.caseFunction();
+CPFOptions.mpc = mpc;
 
 % count number of contingencies
 CPFOptions.nContingencies = 1;

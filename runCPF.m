@@ -5,7 +5,8 @@ function cpfScenarios = runCPF(CPFOptions,mpopt)
 define_constants;
 
 % base case
-mpcb = CPFOptions.caseFunction();
+%mpcb = CPFOptions.caseFunction();
+mpcb = CPFOptions.mpc;
 
 % add WF to gen matrix
 if strcmp(CPFOptions.windScheme,'buses')
@@ -16,12 +17,19 @@ if strcmp(CPFOptions.windScheme,'buses')
    mpcb.gen = [mpcb.gen ; zeros(nwf,gcol)];
    mpcb.gen(grow+1:grow+nwf,GEN_BUS) = CPFOptions.windBuses; % fill in generator bus
    
+   % also add rows to gencost matrix
+   if isfield(mpcb,'gencost')
+       mpcb.gencost = [mpcb.gencost ; zeros(nwf,size(mpcb.gencost,2))];
+   end
+       
    for i=1:nwf
        % set WF gen voltage to conform with other generators at the same bus
        gi = find(mpcb.gen(1:grow,GEN_BUS)==CPFOptions.windBuses(i));
+       
+       mpcb.gen(grow+i,MBASE) = mpcb.baseMVA;
        if ~isempty(gi)
            gi = gi(1);
-           mpcb.gen(grow+i,VG) = mpcb.gen(gi,VG); % WF gen voltage = 1
+           mpcb.gen(grow+i,[VG]) = mpcb.gen(gi,[VG]); % WF gen voltage = 1
        else
            mpcb.gen(grow+i,VG) = 1;
        end
@@ -30,13 +38,15 @@ if strcmp(CPFOptions.windScheme,'buses')
    % for WF pv type, set all WF buses to pv and activate WF generators
    if strcmp(CPFOptions.windBusType,'pv')
        mpcb.bus(CPFOptions.windBuses,BUS_TYPE) = 2;
-       mpcb.gen(grow+1,grow+nwf,GEN_STATUS) = 1;
+       mpcb.gen(grow+1:grow+nwf,GEN_STATUS) = 1;
    end
    
    if CPFOptions.removeOtherGeneration
        for i=1:length(CPFOptions.windBuses)
-            % deactive other generators at WF buses
-            mpcb.gen( mpcb.gen(:,GEN_BUS) == CPFOptions.windBuses(i) , GEN_STATUS) = 0;
+            % deactive old generators at WF buses
+            gentmp = mpcb.gen(1:grow,:);
+            gentmp( gentmp(:,GEN_BUS) == CPFOptions.windBuses(i) , GEN_STATUS) = 0;
+            mpcb.gen(1:grow,:) = gentmp;
        end  
        if strcmp(CPFOptions.windBusType,'pq')
             % buses that were PV and had generators deactivated should now
@@ -133,19 +143,19 @@ for k=1:CPFOptions.nWindPoints
         
         %% apply contingency
         if i == 1 % no fault
-            cpfScenarios{i,k}.str = sprintf(['No fault\n%i MW wind'],CPFOptions.pWind(k));
+            cpfScenarios{i,k}.str = sprintf(['No fault\n%i MW wind (' CPFOptions.windBusType ')'],CPFOptions.pWind(k));
         elseif i <= CPFOptions.nLines+1 % trip line
             idx = CPFOptions.tripLines(i-1);
             mpc1.branch(idx,:) = [];
             mpc2.branch(idx,:) = [];
-            cpfScenarios{i,k}.str = sprintf(['Trip line from bus %i to bus %i\n%i MW wind'], ...
+            cpfScenarios{i,k}.str = sprintf(['Trip line from bus %i to bus %i\n%i MW wind (' CPFOptions.windBusType ')'], ...
                 [mpcb.branch(idx,[1 2]) CPFOptions.pWind(k)]);
             
         elseif i <= CPFOptions.nLines+1 + CPFOptions.nGenerators  % trip generator
             idx = CPFOptions.tripGenerators(i-CPFOptions.nLines-1);
             mpc1.gen(idx,GEN_STATUS) = 0;
             mpc2.gen(idx,GEN_STATUS) = 0;
-            cpfScenarios{i}.str = sprintf('Trip generator at bus %i\n%i MW wind', ...
+            cpfScenarios{i}.str = sprintf(['Trip generator at bus %i\n%i MW wind (' CPFOptions.windBusType ')'], ...
                 [mpcb.gen(idx,1) CPFOptions.pWind(k)]);
         end
         
@@ -161,7 +171,14 @@ for k=1:CPFOptions.nWindPoints
             mpc2.bus(CPFOptions.loadIncreaseBuses,[PD QD]) = targetLoad + ...
                 [activeLoadIncreaseVector reactiveLoadIncreaseVector] * iter;
             
-            [mpc3,success] = runcpf(mpc1,mpc2,mpopt);
+            
+            if CPFOptions.mergeGeneration
+                mpcm1 = mergeGenerators(mpc1);
+                mpcm2 = mergeGenerators(mpc2);
+                [mpc3,success] = runcpf(mpcm1,mpcm2,mpopt);
+            else
+                [mpc3,success] = runcpf(mpc1,mpc2,mpopt);
+            end
             iter = iter + 1;
         end
         %mpc3.cpf.loadIncreaseIterations = iter; % needed to know original base load

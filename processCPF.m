@@ -24,6 +24,8 @@ secure_lam = zeros(nContingencies,nWindPoints); % maximum lambda for which syste
 contingencies = cell(nContingencies,1);
 secure = zeros(nContingencies,nWindPoints); % binary = 1 if base case power flow secure
 securityLimitType = zeros(nContingencies,nWindPoints); % type of security violation, 1 min, 2 max, 0 no violation, -1 no convergence
+basePLossFraction = zeros(size(pMax));
+nosePLossFraction = zeros(size(pMax));
 
 for k=1:nWindPoints % loop over wind power
     for i=1:nContingencies % loop contingencies
@@ -42,20 +44,25 @@ for k=1:nWindPoints % loop over wind power
             %% extract data
             V = mpcc.cpf.V;
             
+            % manual check for nose point as matpower sometimes fails
+            % to terminate
+            % may give false alarm in some cases
             if CPFOptions.checkCpfTermination
-            % increasing voltages => decrease max_lam
-            s = 1;
-            count = 1;
-            while s == 1 && count <= iter
-                vIncrease = abs(V(:,count)) < abs(V(:,count+1));
-                vDiff = vIncrease .* (abs(abs(V(:,count)) - abs(V(:,count+1))));
-                if max(vDiff) > CPFOptions.voltageTolerance
-                   s = 0;
-                else
-                   count = count + 1;
-                end                    
-            end
-            mpcc.cpf.max_lam = mpcc.cpf.lam(count);
+                % increasing voltages => decrease max_lam
+                s = 1;
+                count = 1;
+                while s == 1 && count <= iter
+                    vIncrease = abs(V(:,count)) < abs(V(:,count+1));
+                    vDiff = vIncrease .* (abs(abs(V(:,count)) - abs(V(:,count+1))));
+                    if max(vDiff) > CPFOptions.voltageTolerance
+                        s = 0;
+                    else
+                        count = count + 1;
+                    end
+                end
+                mpcc.cpf.max_lam = mpcc.cpf.lam(count);
+            else
+                count = iter+1;
             end
             
             Pbase = sum(mpcb.bus(:,PD));
@@ -73,6 +80,7 @@ for k=1:nWindPoints % loop over wind power
             Sinj = zeros(size(mpcb.bus,1),iter+1);
             Pgen = zeros(size(mpcb.bus,1),iter+1);
             Qgen = zeros(size(Pgen));
+            Sloss = zeros(1,iter+1);
             for ii=1:iter+1
                 Sinj(:,ii) = V(:,ii).*conj(Ybus*V(:,ii))*mpcc.baseMVA;
                 Pgen(:,ii) = mpcb.bus(:,PD) + mpcc.cpf.lam(ii)*(mpct.bus(:,PD)-mpcb.bus(:,PD)) ...
@@ -84,10 +92,21 @@ for k=1:nWindPoints % loop over wind power
                 if strcmp(CPFOptions.windBusType,'pq')
                     % Note: Generated Q and P includes wind power
                 end
+                % calculate losses
+                % loop over lines
+                for iii=1:size(mpcb.branch,1)
+                    bus1 = mpcb.branch(iii,T_BUS);
+                    bus2 = mpcb.branch(iii,F_BUS);
+                    Sloss(ii) = Sloss(ii) + ...
+                                mpcc.baseMVA * V(bus1,ii) * conj( Ybus(bus1,bus2) * (V(bus2,ii)-V(bus1,ii))) + ...
+                                mpcc.baseMVA * V(bus2,ii) * conj( Ybus(bus2,bus1) * (V(bus1,ii)-V(bus2,ii)));           
+                end
             end
+            pLoss = sum(Pgen,1) - Pscale;
+            pLossFraction = pLoss./sum(Pgen,1);
             
-            
-            
+            basePLossFraction(i,k) = pLossFraction(1);
+            nosePLossFraction(i,k) = pLossFraction(count);
             %% security constraints
             % check if voltage limits are satisfied
             ii = 0;
@@ -131,14 +150,20 @@ for k=1:nWindPoints % loop over wind power
             Pgen = [];
             Qgen = [];
             Pscale = [];
+            Pdiff = [];
+            Pbase = [];
+            pLoss = [];
+            pLossFraction = [];
             secure_lam(i,k) = 0;
             pSecure(i,k) = 0;
             secure(i,k) = 0;
             securityLimitType(i,k) = -1;
+            basePLossFraction(i,k) = 0;
+            nosePLossFraction(i,k) = 0;
         end
         
         
-        
+        %% results for individual cpf
         % store results in struct
         mpcc.cpf.secure_lam = secure_lam(i,k);
         mpcc.cpf.pMax = pMax(i,k);
@@ -151,6 +176,8 @@ for k=1:nWindPoints % loop over wind power
         mpcc.cpf.securityLimitType = securityLimitType(i,k);
         mpcc.cpf.Pdiff = Pdiff;
         mpcc.cpf.Pbase = Pbase;
+        mpcc.cpf.pLoss = pLoss;
+        mpcc.cpf.pLossFraction = pLossFraction;
         
         contingencyCases{i,k}.mpcc = mpcc; % return struct with additional results
     end % loop over contingencies
@@ -161,7 +188,7 @@ for i=1:CPFOptions.nContingencies
     s = strsplit(contingencyCases{i,1}.str,'\n');
     contingencies{i} = s{1};
 end
-
+%% array results
 res = struct();
 res.pMax = pMax;
 res.pSecure = pSecure;
@@ -171,7 +198,8 @@ res.secure = secure;
 res.contingencies = contingencies;
 res.pWind = CPFOptions.pWind;
 res.securityLimitType = securityLimitType;
-
+res.basePLossFraction = basePLossFraction;
+res.nosePLossFraction = nosePLossFraction;
 res.pMaxNminus1 = min(pMax);
 res.pSecureNminus1 = min(pSecure);
 res.Nminus1 = min(secure);
